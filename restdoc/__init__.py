@@ -1,4 +1,5 @@
 from textwrap import dedent
+from validate import RestdocValidator, RestdocError
 METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT', 'OPTIONS']
 
 def delegate_http_methods(prefix=''):
