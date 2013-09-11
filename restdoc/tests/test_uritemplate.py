@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from restdoc.uritemplate import expand_template, expand_regex
+from restdoc.uritemplate import expand_template
 
 
 class TestExpandTemplate(TestCase):

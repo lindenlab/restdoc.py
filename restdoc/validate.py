@@ -3,6 +3,14 @@ import validictory
 import re
 from .uritemplate import expand_regex
 
+DEBUG=True
+
+def debug(mesg, params=None):
+    if DEBUG:
+        if params is not None:
+            print mesg % params
+        else:
+            print mesg
 
 class RestdocError(ValueError):
     '''
@@ -99,16 +107,16 @@ class RestdocValidator(object):
                     if header not in headers:
                         raise RestdocError("Method '%s' requires header '%s'" % (method_name, header))
 
+        matching_schema = None
         if 'accepts' in resource_method:
-            found_match = False
             errors = []
 
             for accept in resource_method['accepts']:
                 if self._validate_schema(accept, body, errors, lazy_schema_matching):
-                    found_match = True
+                    matching_schema = accept
                     break
 
-            if not found_match:
+            if matching_schema is None:
                 raise RestdocError("Method '%s' does not accept given body.  Errors: %s" % (method_name, errors)) 
 
         if 'headers' in self.restdoc:
@@ -116,6 +124,8 @@ class RestdocValidator(object):
                 if 'required' in header_spec and header_spec['required']:
                     if header not in headers:
                         raise RestdocError("Method '%s' requires header '%s'" % (method_name, header))
+
+        return resource, uri_params, matching_schema
 
     def validateResponse(self, method, path, status, body='', headers={}, lazy_schema_matching=False):
         resource, uri_params = self.findResource(path)
@@ -127,7 +137,6 @@ class RestdocValidator(object):
         resource_method = resource['methods'][method]
         if 'statusCodes' not in resource_method:
             raise RestdocError("Method '%s' missing statusCodes definition")
-
 
         statusCodes = self.restdoc.get('statusCodes', {})
         statusCodes.update(resource_method['statusCodes'])
@@ -166,11 +175,10 @@ class RestdocValidator(object):
                     if header not in headers:
                         raise RestdocError("Method '%s' response requires header '%s'" % (method_name, header))
             
-
         if matching_schema is None:
             raise RestdocError("Method '%s' responded with invalid body.  Errors: %s" % (method_name, errors)) 
 
-        return resource, matching_schema
+        return resource, uri_params, matching_schema
 
     def _validate_schema(self, method_schema, body, errors, lazy_schema_matching):
         if 'schema' not in method_schema or method_schema['schema'] not in self.schemas:

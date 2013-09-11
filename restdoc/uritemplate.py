@@ -4,6 +4,27 @@ op_table = {}
 
 DEBUG=False
 
+ALPHA               =  "A-Za-z"
+DIGIT               =  "0-9"
+HEXDIG              =  "%sA-Fa-f" % DIGIT
+
+pct_encoded         =  "%%[%s]{2}" % HEXDIG
+unreserved          =  "%s%s-._~" % (ALPHA, DIGIT)
+gen_delims          =  ":/?#[]@"
+gen_delims_escaped  =  ":/?#\[\]@"
+sub_delims          =  "!$&'()*+,;="
+reserved            =  "%s%s" % (gen_delims, sub_delims)
+reserved_escaped    =  "%s%s" % (gen_delims_escaped, sub_delims)
+
+#ucschar        =  %xA0-D7FF / %xF900-FDCF / %xFDF0-FFEF
+#               /  %x10000-1FFFD / %x20000-2FFFD / %x30000-3FFFD
+#               /  %x40000-4FFFD / %x50000-5FFFD / %x60000-6FFFD
+#               /  %x70000-7FFFD / %x80000-8FFFD / %x90000-9FFFD
+#               /  %xA0000-AFFFD / %xB0000-BFFFD / %xC0000-CFFFD
+#               /  %xD0000-DFFFD / %xE1000-EFFFD
+#
+#iprivate       =  %xE000-F8FF / %xF0000-FFFFD / %x100000-10FFFD
+
 def debug(mesg, params=None):
     if DEBUG:
         if params is not None:
@@ -20,8 +41,11 @@ def expand_template(source, context):
         c = source[i]
         if c == '{':
             j = i
-            while source[j] != '}':
-                j += 1
+            try:
+                while source[j] != '}':
+                    j += 1
+            except IndexError:
+                raise URITemplateError("Mismatched {}: %s" % source[i:])
             ret += expand_expression(source[i + 1:j], context)
             i = j
         else:
@@ -41,6 +65,7 @@ def expand_expression(expr, context):
     return expr_type.expand(expr.split(','), context)
 
 def expand_regex(source, params):
+    debug("expand_regex: %s" % source)
     end = len(source)
     regex_template = "^"
     i = 0
@@ -50,8 +75,11 @@ def expand_regex(source, params):
         c = source[i]
         if c == '{':
             j = i
-            while source[j] != '}':
-                j += 1
+            try:
+                while source[j] != '}':
+                    j += 1
+            except IndexError:
+                raise URITemplateError("Mismatched {}: %s" % source[i:])
             param_regex, param_validations = expand_regex_expression(source[i + 1:j], params, validation_idx)
             regex_template += param_regex
             validations += param_validations
@@ -61,6 +89,8 @@ def expand_regex(source, params):
             regex_template += c
         i += 1
     regex_template += "$"
+
+    debug("regex_template: %s", regex_template)
 
     done = False
     valid_regex_list=[]
@@ -294,21 +324,9 @@ class ReservedExpr(SimpleExpr):
         The allowed set for a given expansion depends on the expression type:
         reserved ("+") and fragment ("#") expansions allow the set of
         characters in the union of ( unreserved / reserved / pct-encoded ) to
-        be passed through without pct-encoding
-
-        ALPHA          =  %x41-5A / %x61-7A   ; A-Z / a-z
-        DIGIT          =  %x30-39             ; 0-9
-        HEXDIG         =  DIGIT / "A" / "B" / "C" / "D" / "E" / "F"
-                          ; case-insensitive
-
-        pct-encoded    =  "%" HEXDIG HEXDIG
-        unreserved     =  ALPHA / DIGIT / "-" / "." / "_" / "~"
-        reserved       =  gen-delims / sub-delims
-        gen-delims     =  ":" / "/" / "?" / "#" / "[" / "]" / "@"
-        sub-delims     =  "!" / "$" / "&" / "'" / "(" / ")"
-                       /  "*" / "+" / "," / ";" / "="
+        be passed through without pct-encoding.
         '''
-        escaped = quote(str(value[:max_length]), safe="%:/?#[]@!$&'()*+,;=")
+        escaped = quote(str(value[:max_length]), safe="%" + reserved)
 
         # Note that the percent character ("%") is only allowed
         # as part of a pct-encoded triplet and only for reserved/fragment
