@@ -22,7 +22,9 @@ class RestdocValidator(object):
     Restdoc validator.  See https://github.com/RestDoc/specification/blob/master/specification.md
     '''
 
-    def __init__(self, restdoc):
+    def __init__(self, restdoc, validator_cls=validictory.SchemaValidator, format_validators=None):
+        self.validator_cls = validator_cls
+        self.format_validators=format_validators
         # Basic validation of restdoc itself.
         if not isinstance(restdoc, dict):
             raise RestdocError("Restdoc must be a dictionary.")
@@ -198,7 +200,8 @@ class RestdocValidator(object):
 
         # Validate body against schema.
         try:
-            validictory.validate(body, schema_spec['schema'],
+            validictory.validate(body, schema_spec['schema'], validator_cls=self.validator_cls,
+                                 format_validators=self.format_validators,
                                  required_by_default=False, disallow_unknown_properties=True, 
                                  disallow_unknown_schemas=True, schemas=self.schemas)
             return True
