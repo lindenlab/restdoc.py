@@ -23,8 +23,6 @@ class RestdocValidator(object):
     '''
 
     def __init__(self, restdoc, validator_cls=validictory.SchemaValidator, format_validators=None):
-        self.validator_cls = validator_cls
-        self.format_validators=format_validators
         # Basic validation of restdoc itself.
         if not isinstance(restdoc, dict):
             raise RestdocError("Restdoc must be a dictionary.")
@@ -36,6 +34,11 @@ class RestdocValidator(object):
             raise RestdocError("Resources must be a list.")
 
         self.schemas = self.restdoc.get('schemas', {})
+
+        # Instantiate the validator.
+        self.validator = validator_cls(format_validators, required_by_default=False,
+                            blank_by_default=False, disallow_unknown_properties=True,
+                            disallow_unknown_schemas=True, schemas=self.schemas)
 
         # Basic validation of each resource as well as pre-populating
         # path regex -> resource lookup table.
@@ -200,10 +203,7 @@ class RestdocValidator(object):
 
         # Validate body against schema.
         try:
-            validictory.validate(body, schema_spec['schema'], validator_cls=self.validator_cls,
-                                 format_validators=self.format_validators,
-                                 required_by_default=False, disallow_unknown_properties=True, 
-                                 disallow_unknown_schemas=True, schemas=self.schemas)
+            self.validator.validate(body, schema_spec['schema'])
             return True
         except ValueError as e:
             errors.append(e)
