@@ -152,8 +152,10 @@ class RestdocValidator(object):
         matching_schema = None
         errors = []
         status_spec = statusCodes[str(status)]
+        match_attempts = 0
         if isinstance(status_spec, dict) and 'response' in status_spec:
             for response_type in status_spec['response'].get('types', []):
+                match_attempts += 1
                 if self._validate_schema(response_type, body, errors, lazy_schema_matching):
                     matching_schema = response_type
                     break
@@ -165,6 +167,7 @@ class RestdocValidator(object):
 
         if 'response' in resource_method:
             for response_type in resource_method['response'].get('types', []):
+                match_attempts += 1
                 if self._validate_schema(response_type, body, errors, lazy_schema_matching):
                     matching_schema = response_type
                     break
@@ -181,7 +184,7 @@ class RestdocValidator(object):
                         raise RestdocError("Method '%s' response requires header '%s'" % (method_name, header))
             
         if matching_schema is None:
-            raise RestdocError("Method '%s' responded with invalid body.  Errors: %s" % (method_name, errors)) 
+            raise RestdocError("Method '%s' responded with invalid body.  Matched against %d schemas.  Errors: %s" % (method_name, match_attempts, errors)) 
 
         return resource, uri_params, matching_schema
 
