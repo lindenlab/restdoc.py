@@ -43,11 +43,12 @@ class RestdocValidator(object):
         # Basic validation of each resource as well as pre-populating
         # path regex -> resource lookup table.
         self.resource_patterns = {}
+        self.resource_names = {}
         for resource in self.resources:
             self._validateResource(resource)
-            self._addResourcePath(resource)
+            self._addResource(resource)
 
-    def _addResourcePath(self, resource):
+    def _addResource(self, resource):
         # Compile the list of valid regex expansions.
         for valid_regex in expand_regex(resource['path'], resource.get('params', {})):
             try:
@@ -55,6 +56,8 @@ class RestdocValidator(object):
             except re.error as e:
                 raise RestdocError("Invalid validation regex (%s): %s" % (e, valid_regex))
             self.resource_patterns[regex] = resource
+        # Add this resource to lookup-by-name table.
+        self.resource_names[self._getResourceName(resource)] = resource
 
     def _getResourceName(self, resource):
         if 'id' in resource:
@@ -96,11 +99,19 @@ class RestdocValidator(object):
             if value is not None:
                 uri_params[param].append(value)
         return last_resource, uri_params
-            
 
-    def validateRequest(self, method, path, body='', headers={}, lazy_schema_matching=False):
-        resource, uri_params = self.findResource(path)
-        resource_name = self._getResourceName(resource)
+    def findResourceByName(self, resource_name):
+        if resource_name in self.resource_names:
+            return self.resource_names[resource_name]
+        raise RestdocError("Unknown resource name: %s" % resource_name)
+
+    def validateRequest(self, method, path, body='', headers={}, lazy_schema_matching=False, resource_name=None):
+        if resource_name is None:
+            resource, uri_params = self.findResource(path)
+            resource_name = self._getResourceName(resource)
+        else:
+            uri_params={}
+            resource = self.findResourceByName(resource_name)
         if method not in resource['methods']:
             raise RestdocError("Resource '%s' does not have method '%s'" % (resource_name, method))
         method_name = method + " " + resource_name
@@ -132,9 +143,13 @@ class RestdocValidator(object):
 
         return resource, uri_params, matching_schema
 
-    def validateResponse(self, method, path, status, body='', headers={}, lazy_schema_matching=False):
-        resource, uri_params = self.findResource(path)
-        resource_name = self._getResourceName(resource)
+    def validateResponse(self, method, path, status, body='', headers={}, lazy_schema_matching=False, resource_name=None):
+        if resource_name is None:
+            resource, uri_params = self.findResource(path)
+            resource_name = self._getResourceName(resource)
+        else:
+            uri_params={}
+            resource = self.findResourceByName(resource_name)
         if method not in resource['methods']:
             raise RestdocError("Resource '%s' does not have method '%s'" % (resource_name, method))
         method_name = method + " " + resource_name
