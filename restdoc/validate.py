@@ -120,7 +120,7 @@ class RestdocValidator(object):
         if 'headers' in resource_method:
             for header, header_spec in resource_method['headers'].iteritems():
                 if 'required' in header_spec and header_spec['required']:
-                    if header not in headers:
+                    if header not in headers and header.lower() not in headers:
                         raise RestdocError("Method '%s' requires header '%s'" % (method_name, header))
 
         matching_schema = None
@@ -138,7 +138,7 @@ class RestdocValidator(object):
         if 'headers' in self.restdoc:
             for header, header_spec in self.restdoc['headers'].get('request', {}).iteritems():
                 if 'required' in header_spec and header_spec['required']:
-                    if header not in headers:
+                    if header not in headers and header.lower() not in headers:
                         raise RestdocError("Method '%s' requires header '%s'" % (method_name, header))
 
         return resource, uri_params, matching_schema
@@ -177,7 +177,7 @@ class RestdocValidator(object):
 
             for header, header_spec in status_spec['response'].get('headers', {}).iteritems():
                 if 'required' in header_spec and header_spec['required']:
-                    if header not in headers:
+                    if header not in headers and header.lower() not in headers:
                         raise RestdocError("Method '%s' response requires header '%s'" % (method_name, header))
 
         if 'response' in resource_method:
@@ -189,13 +189,13 @@ class RestdocValidator(object):
 
             for header, header_spec in resource_method['response'].get('headers', {}).iteritems():
                 if 'required' in header_spec and header_spec['required']:
-                    if header not in headers:
+                    if header not in headers and header.lower() not in headers:
                         raise RestdocError("Method '%s' response requires header '%s'" % (method_name, header))
 
         if 'headers' in self.restdoc:
             for header, header_spec in self.restdoc['headers'].get('response', {}).iteritems():
                 if 'required' in header_spec and header_spec['required']:
-                    if header not in headers:
+                    if header not in headers and header.lower() not in headers:
                         raise RestdocError("Method '%s' response requires header '%s'" % (method_name, header))
             
         if matching_schema is None:
